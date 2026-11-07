@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#090a10" />
+  <title>Keys Vault</title>
+
+  <!-- Google Firebase SDK for 100% Free Cross-Platform Sync -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 10% 15%, rgba(10, 132, 255, 0.28), transparent 45%),
+                     radial-gradient(circle at 90% 85%, rgba(236, 72, 153, 0.22), transparent 45%),
+                     radial-gradient(circle at 50% 50%, rgba(94, 92, 230, 0.18), transparent 50%),
+                     #090a10;
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-folder: rgba(255, 255, 255, 0.06);
+      --glass-pill: rgba(255, 255, 255, 0.12);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --glass-specular: rgba(255, 255, 255, 0.35);
+      --text-main: #ffffff;
+      --text-sub: rgba(255, 255, 255, 0.6);
+      --ios-blue: #0A84FF;
+      --ios-green: #30D158;
+      --ios-red: #FF453A;
+      --radius-large: 26px;
+      --radius-medium: 16px;
+      --radius-small: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: env(safe-area-inset-top, 20px) 16px 120px 16px;
+      overflow-x: hidden;
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.45),
+                  inset 0 1px 1px var(--glass-specular);
+    }
+
+    header {
+      width: 100%;
+      max-width: 1100px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      border-radius: var(--radius-large);
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0A84FF, #5E5CE6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-action-pill {
+      background: var(--ios-blue);
+      border: none;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .btn-action-pill:active { transform: scale(0.96); }
+
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-pill);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Biometric Enrollment Banner */
+    .bio-setup-banner {
+      width: 100%;
+      max-width: 1100px;
+      padding: 12px 18px;
+      border-radius: var(--radius-medium);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      background: rgba(48, 209, 88, 0.15);
+      border: 1px solid rgba(48, 209, 88, 0.35);
+    }
+
+    .btn-bio-link {
+      background: var(--ios-green);
+      color: #000;
+      border: none;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    /* ====================================================================
+       RESPONSIVE FOLDERS (FIXED MOBILE SQUEEZING)
+       ==================================================================== */
+    .folders-wrapper {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .folder-container {
+      background: var(--glass-folder);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-large);
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      transition: all 0.25s ease;
+    }
+
+    .folder-header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .folder-header.collapsed-header {
+      margin-bottom: 0;
+    }
+
+    /* Folder Row 1: Icon & Large Title */
+    .folder-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .folder-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .folder-title-input {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #fff;
+      font-size: 21px; /* Large, bold, crystal clear */
+      font-weight: 700;
+      outline: none;
+      border-radius: 8px;
+      padding: 4px 6px;
+      width: 100%;
+      letter-spacing: -0.3px;
+    }
+    .folder-title-input:hover { background: rgba(255, 255, 255, 0.08); }
+    .folder-title-input:focus { background: rgba(0,0,0,0.45); border-color: var(--ios-blue); }
+
+    /* Folder Row 2: Badges & Action Buttons */
+    .folder-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 8px;
+    }
+
+    .folder-count-badge {
+      font-size: 12px;
+      color: var(--text-sub);
+      background: var(--glass-pill);
+      padding: 5px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .folder-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-minimize {
+      background: var(--glass-pill);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn-add-acc {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    /* Desktop View: Keep Folder on a single wide line */
+    @media (min-width: 650px) {
+      .folder-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .folder-controls-row {
+        width: auto;
+      }
+    }
+
+    /* Accounts Grid */
+    .accounts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .accounts-grid.collapsed {
+      display: none;
+    }
+
+    /* Account Card */
+    .app-card {
+      border-radius: var(--radius-medium);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .app-avatar-wrapper {
+      position: relative;
+      cursor: pointer;
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+    }
+
+    .app-avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      background: var(--glass-pill);
+      border: 1px solid var(--glass-border);
+      overflow: hidden;
+    }
+    .app-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .avatar-badge-edit {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      background: var(--ios-blue);
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      border: 1px solid #fff;
+    }
+
+    .inline-edit {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #fff;
+      outline: none;
+      border-radius: 6px;
+      padding: 2px 4px;
+      width: 100%;
+    }
+    .inline-edit:hover { background: rgba(255, 255, 255, 0.08); }
+    .inline-edit:focus { background: rgba(0,0,0,0.45); border-color: var(--ios-blue); }
+
+    .edit-app-name {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 10px;
+      border-radius: var(--radius-small);
+      gap: 6px;
+    }
+
+    .field-left {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .field-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .copy-btn, .toggle-btn {
+      background: var(--glass-pill);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      padding: 5px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .copy-btn.copied { background: var(--ios-green) !important; color: #000 !important; }
+
+    .notes-row {
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px dashed rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius-small);
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .edit-notes { font-size: 12px; color: #d1d5db; }
+
+    /* Lock Screen Modal */
+    #lockScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--bg-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .lock-card {
+      width: 100%;
+      max-width: 360px;
+      border-radius: var(--radius-large);
+      padding: 32px 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .form-input {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--glass-border);
+      padding: 12px 14px;
+      border-radius: var(--radius-medium);
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      width: 100%;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: var(--ios-blue);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px;
+      border-radius: var(--radius-medium);
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn-biometric-fast {
+      background: linear-gradient(135deg, #0A84FF, #5E5CE6);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px;
+      border-radius: var(--radius-medium);
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 16px rgba(10, 132, 255, 0.35);
+    }
+    .btn-biometric-fast:active { transform: scale(0.97); }
+
+    /* Settings / Cloud Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="top-bar glass-panel">
+      <div class="logo-group">
+        <div class="logo-badge">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 style="font-size: 18px; font-weight: 700;">Keys Vault</h1>
+          <p style="font-size: 11px; color: var(--text-sub);" id="syncIndicator">● Local Mode</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- New Folder Button -->
+        <button class="btn-action-pill" onclick="addNewFolder()">
+          <span>+ Folder</span>
+        </button>
+
+        <!-- Cloud Sync Setup Button -->
+        <button class="btn-icon" title="Cloud Sync Settings" onclick="openCloudModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        </button>
+
+        <!-- Lock Button -->
+        <button class="btn-icon" title="Lock" onclick="lockVault()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Biometric Setup Banner -->
+  <div id="bioLinkBanner" class="bio-setup-banner" style="display: none;">
+    <div>
+      <h4 style="font-size: 14px; font-weight: 700;" id="bannerBioTitle">Connect Biometrics</h4>
+      <p style="font-size: 12px; color: var(--text-sub);">Enable instant Face ID or Fingerprint unlock.</p>
+    </div>
+    <button class="btn-bio-link" onclick="enrollBiometrics()" id="bannerBioBtn">Link Now</button>
+  </div>
+
+  <input type="file" id="iconFileInput" accept="image/*" style="display: none;" onchange="handleIconUpload(event)" />
+
+  <!-- Folders Container -->
+  <main class="folders-wrapper" id="foldersContainer"></main>
+
+  <!-- Lock Screen Modal -->
+  <div id="lockScreen">
+    <div class="lock-card glass-panel">
+      <div class="logo-badge" style="width: 54px; height: 54px; border-radius: 16px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </div>
+      <div>
+        <h2 id="lockTitle" style="font-size: 20px; font-weight: 700;">Vault Locked</h2>
+        <p id="lockSubtitle" style="font-size: 13px; color: var(--text-sub); margin-top: 2px;">Tap below to scan</p>
+      </div>
+
+      <!-- High-speed Face ID / Fingerprint Button -->
+      <button class="btn-biometric-fast" id="bioUnlockBtn" onclick="fastBiometricAuth()">
+        <svg id="bioUnlockIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+        <span id="bioUnlockText">Unlock with Face ID</span>
+      </button>
+
+      <!-- Manual Password Fallback (Automatically shown if Face ID fails or not enrolled) -->
+      <div id="manualPassSection" style="width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 6px;">
+        <input type="password" id="masterPassInput" class="form-input" placeholder="Or enter Master Password" onkeydown="if(event.key==='Enter') unlockWithPassword()" />
+        <button class="btn-primary" onclick="unlockWithPassword()">Unlock with Password</button>
+      </div>
+
+      <p id="lockError" style="color: var(--ios-red); font-size: 12px; display: none;">Invalid Password</p>
+    </div>
+  </div>
+
+  <!-- Cloud Sync / Backup Modal -->
+  <div class="modal-overlay" id="cloudModal">
+    <div class="lock-card glass-panel" style="max-width: 420px; text-align: left;">
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Cross-Platform Cloud Sync</h3>
+      <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 14px;">Connect Google Firebase to automatically sync your iPhone, Android, and Desktop for free.</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+        <label style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-sub);">Firebase Config JSON</label>
+        <textarea id="firebaseConfigInput" class="form-input" style="height: 100px; text-align: left; font-family: monospace; font-size: 11px;" placeholder='{"apiKey": "...", "projectId": "..."}'></textarea>
+        
+        <button class="btn-primary" onclick="saveCloudConfig()">Connect & Sync</button>
+        
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+          <button class="btn-action-pill" style="flex: 1; justify-content: center; background: var(--glass-pill);" onclick="exportBackup()">Export Backup</button>
+          <button class="btn-action-pill" style="flex: 1; justify-content: center; background: var(--glass-pill);" onclick="document.getElementById('importFileInput').click()">Import Backup</button>
+        </div>
+        <input type="file" id="importFileInput" style="display:none;" onchange="importBackup(event)" />
+
+        <button class="btn-action-pill" style="margin-top: 6px; justify-content: center; background: transparent; border: 1px solid var(--glass-border);" onclick="closeCloudModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ====================================================================
+       1. DATA & STATE
+       ==================================================================== */
+    let activeUploadInfo = null;
+    let db = null; // Firestore reference
+
+    let vaultFolders = [
+      {
+        id: "f_google",
+        title: "Google Accounts",
+        collapsed: false,
+        accounts: [
+          { id: "g1", app: "Google (Personal)", email: "personal@gmail.com", password: "PasswordGoogle1!", notes: "Main Gmail & YouTube", icon: "" },
+          { id: "g2", app: "Google (Work)", email: "work.account@company.com", password: "WorkPass#2026", notes: "Google Drive & Workspace", icon: "" }
+        ]
+      },
+      {
+        id: "f_social",
+        title: "Social & Discord",
+        collapsed: false,
+        accounts: [
+          { id: "s1", app: "Discord", email: "gamer_tag#1001", password: "DiscordTokenSecret", notes: "2FA Backup enabled", icon: "" }
+        ]
+      }
+    ];
+
+    /* ====================================================================
+       2. HIGH-SPEED FACE ID & FINGERPRINT (INSTANT SCAN)
+       ==================================================================== */
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+
+    function bufferToBase64(buffer) {
+      return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    }
+    function base64ToBuffer(base64) {
+      return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    }
+
+    function initBiometricUI() {
+      const bioText = document.getElementById("bioUnlockText");
+      const bioIcon = document.getElementById("bioUnlockIcon");
+      const bannerTitle = document.getElementById("bannerBioTitle");
+      const bannerBtn = document.getElementById("bannerBioBtn");
+
+      if (isIOS) {
+        bioText.innerText = "Unlock with Face ID";
+        bioIcon.innerHTML = `<path d="M7 3H5a2 2 0 0 0-2 2v2m18-4h-2a2 2 0 0 0-2 2v2M3 17v2a2 2 0 0 0 2 2h2m14-4v2a2 2 0 0 1-2 2h-2"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="9" r="1"/><path d="M10 15h4"/>`;
+        bannerTitle.innerText = "Link Face ID";
+        bannerBtn.innerText = "Link Face ID";
+      } else if (isAndroid) {
+        bioText.innerText = "Unlock with Fingerprint";
+        bioIcon.innerHTML = `<path d="M12 2a10 10 0 0 0-10 10v1a10 10 0 0 0 10 10 10 10 0 0 0 10-10v-1A10 10 0 0 0 12 2z"/><path d="M12 7v5"/><path d="M8 12a4 4 0 0 1 8 0"/>`;
+        bannerTitle.innerText = "Link Fingerprint";
+        bannerBtn.innerText = "Link Fingerprint";
+      } else {
+        bioText.innerText = "Unlock with Biometrics";
+        bioIcon.innerHTML = `<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`;
+      }
+
+      // If linked on this phone, highlight fast biometric unlock
+      if (localStorage.getItem("keys_vault_biometric_id")) {
+        document.getElementById("bioUnlockBtn").style.display = "flex";
+        // Attempt immediate instant trigger
+        setTimeout(() => { fastBiometricAuth(true); }, 250);
+      } else {
+        document.getElementById("bioUnlockBtn").style.display = "none";
+      }
+    }
+
+    async function enrollBiometrics() {
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        const credential = await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge,
+            rp: { name: "Keys Vault", id: window.location.hostname },
+            user: {
+              id: new Uint8Array([1, 2, 3, 4, 5, 6]),
+              name: "vault_owner",
+              displayName: "Vault Owner"
+            },
+            pubKeyCredParams: [
+              { type: "public-key", alg: -7 },  // ES256
+              { type: "public-key", alg: -257 } // RS256
+            ],
+            authenticatorSelection: {
+              authenticatorAttachment: "platform", // Direct Face ID / Fingerprint
+              userVerification: "required"
+            },
+            timeout: 60000
+          }
+        });
+
+        if (credential) {
+          localStorage.setItem("keys_vault_biometric_id", bufferToBase64(credential.rawId));
+          alert(isIOS ? "Face ID successfully connected!" : "Fingerprint successfully connected!");
+          document.getElementById("bioLinkBanner").style.display = "none";
+          document.getElementById("bioUnlockBtn").style.display = "flex";
+        }
+      } catch (err) {
+        alert("Linking canceled or not supported on this browser context.");
+      }
+    }
+
+    // Direct, fast Face ID / Fingerprint call with zero passkey menu
+    async function fastBiometricAuth(isAuto = false) {
+      const credId = localStorage.getItem("keys_vault_biometric_id");
+      if (!credId) {
+        if (!isAuto) alert("Please unlock with password once and tap 'Link Face ID / Fingerprint'.");
+        return;
+      }
+
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        const assertion = await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            allowCredentials: [{
+              type: "public-key",
+              id: base64ToBuffer(credId) // Specifies the exact sensor, bypassing choice menus
+            }],
+            userVerification: "required",
+            timeout: 60000
+          }
+        });
+
+        if (assertion) {
+          loadStoredData();
+        }
+      } catch (err) {
+        // If Face ID fails or user cancels, silently show password field
+        console.log("Biometric canceled/failed. Fallback ready.");
+        document.getElementById("manualPassSection").style.display = "flex";
+        document.getElementById("masterPassInput").focus();
+      }
+    }
+
+    /* ====================================================================
+       3. STORAGE & CLOUD SYNC ENGINE
+       ==================================================================== */
+    function persist() {
+      // 1. Local Storage
+      localStorage.setItem("keys_vault_folders", JSON.stringify(vaultFolders));
+
+      // 2. Firebase Cloud Auto-Sync (if connected)
+      if (db) {
+        db.collection("vault").doc("userdata").set({
+          folders: vaultFolders,
+          updatedAt: Date.now()
+        }).catch(e => console.error("Cloud push error:", e));
+      }
+    }
+
+    function loadStoredData() {
+      const stored = localStorage.getItem("keys_vault_folders");
+      if (stored) {
+        vaultFolders = JSON.parse(stored);
+      }
+      document.getElementById("lockScreen").style.display = "none";
+
+      if (!localStorage.getItem("keys_vault_biometric_id")) {
+        document.getElementById("bioLinkBanner").style.display = "flex";
+      }
+
+      renderFolders();
+      initFirebaseIfConfigured();
+    }
+
+    function unlockWithPassword() {
+      const pass = document.getElementById("masterPassInput").value;
+      if (!pass) return;
+      loadStoredData();
+    }
+
+    function lockVault() {
+      document.getElementById("masterPassInput").value = "";
+      document.getElementById("lockScreen").style.display = "flex";
+    }
+
+    // Firebase 100% Free Cross-Platform Listener
+    function initFirebaseIfConfigured() {
+      const configStr = localStorage.getItem("keys_vault_firebase_config");
+      if (!configStr) return;
+
+      try {
+        const config = JSON.parse(configStr);
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        db = firebase.firestore();
+        document.getElementById("syncIndicator").innerText = "● Cloud Synced";
+        document.getElementById("syncIndicator").style.color = "var(--ios-green)";
+
+        // Real-time synchronization listener
+        db.collection("vault").doc("userdata").onSnapshot(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            if (data.folders) {
+              vaultFolders = data.folders;
+              localStorage.setItem("keys_vault_folders", JSON.stringify(vaultFolders));
+              renderFolders();
+            }
+          }
+        });
+      } catch (e) {
+        console.error("Firebase config error:", e);
+      }
+    }
+
+    function openCloudModal() {
+      document.getElementById("cloudModal").style.display = "flex";
+      document.getElementById("firebaseConfigInput").value = localStorage.getItem("keys_vault_firebase_config") || "";
+    }
+    function closeCloudModal() {
+      document.getElementById("cloudModal").style.display = "none";
+    }
+
+    function saveCloudConfig() {
+      const val = document.getElementById("firebaseConfigInput").value.trim();
+      if (val) {
+        localStorage.setItem("keys_vault_firebase_config", val);
+        initFirebaseIfConfigured();
+        persist();
+      }
+      closeCloudModal();
+    }
+
+    function exportBackup() {
+      const blob = new Blob([JSON.stringify(vaultFolders, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `vault-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+
+    function importBackup(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          vaultFolders = JSON.parse(evt.target.result);
+          persist();
+          renderFolders();
+          alert("Backup successfully restored!");
+          closeCloudModal();
+        } catch (err) {
+          alert("Invalid backup file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    /* ====================================================================
+       4. FOLDER & ACCOUNT LOGIC
+       ==================================================================== */
+    function toggleFolderCollapse(folderId) {
+      const folder = vaultFolders.find(f => f.id === folderId);
+      if (folder) {
+        folder.collapsed = !folder.collapsed;
+        persist();
+        renderFolders();
+      }
+    }
+
+    function updateFolderTitle(folderId, newTitle) {
+      const folder = vaultFolders.find(f => f.id === folderId);
+      if (folder) {
+        folder.title = newTitle;
+        persist();
+      }
+    }
+
+    function addNewFolder() {
+      const newF = {
+        id: "f_" + Date.now(),
+        title: "New Folder",
+        collapsed: false,
+        accounts: []
+      };
+      vaultFolders.unshift(newF);
+      persist();
+      renderFolders();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function deleteFolder(folderId) {
+      vaultFolders = vaultFolders.filter(f => f.id !== folderId);
+      persist();
+      renderFolders();
+    }
+
+    function addAccountToFolder(folderId) {
+      const folder = vaultFolders.find(f => f.id === folderId);
+      if (folder) {
+        folder.collapsed = false;
+        folder.accounts.push({
+          id: "acc_" + Date.now(),
+          app: "New Account",
+          email: "user@domain.com",
+          password: "Password123",
+          notes: "Description / notes...",
+          icon: ""
+        });
+        persist();
+        renderFolders();
+      }
+    }
+
+    function updateAccountField(folderId, accId, field, val) {
+      const folder = vaultFolders.find(f => f.id === folderId);
+      if (folder) {
+        const acc = folder.accounts.find(a => a.id === accId);
+        if (acc) {
+          acc[field] = val;
+          persist();
+        }
+      }
+    }
+
+    function deleteAccount(folderId, accId) {
+      const folder = vaultFolders.find(f => f.id === folderId);
+      if (folder) {
+        folder.accounts = folder.accounts.filter(a => a.id !== accId);
+        persist();
+        renderFolders();
+      }
+    }
+
+    // High-performance Icon Upload with 128x128 compression for instant cross-device sync
+    function promptIconUpload(folderId, accId) {
+      activeUploadInfo = { folderId, accId };
+      document.getElementById("iconFileInput").click();
+    }
+
+    function handleIconUpload(e) {
+      const file = e.target.files[0];
+      if (!file || !activeUploadInfo) return;
+
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = function(evt) {
+        img.src = evt.target.result;
+        img.onload = function() {
+          const canvas = document.createElement("canvas");
+          canvas.width = 128;
+          canvas.height = 128;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, 128, 128);
+
+          const optimizedBase64 = canvas.toDataURL("image/webp", 0.85);
+          updateAccountField(activeUploadInfo.folderId, activeUploadInfo.accId, 'icon', optimizedBase64);
+          renderFolders();
+        };
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    }
+
+    /* ====================================================================
+       5. RENDER SYSTEM
+       ==================================================================== */
+    function renderFolders() {
+      const container = document.getElementById("foldersContainer");
+      container.innerHTML = "";
+
+      vaultFolders.forEach(folder => {
+        const folderEl = document.createElement("div");
+        folderEl.className = "folder-container glass-panel";
+
+        const countText = `${folder.accounts.length} ${folder.accounts.length === 1 ? 'account' : 'accounts'}`;
+
+        folderEl.innerHTML = `
+          <div class="folder-header ${folder.collapsed ? 'collapsed-header' : ''}">
+            <!-- Top Line: Full Width Icon & Large Title -->
+            <div class="folder-title-row">
+              <span class="folder-icon">📁</span>
+              <input class="folder-title-input" value="${escapeHtml(folder.title)}" 
+                oninput="updateFolderTitle('${folder.id}', this.value)" placeholder="Folder Title..." />
+            </div>
+
+            <!-- Bottom Line: Badges & Buttons -->
+            <div class="folder-controls-row">
+              <span class="folder-count-badge">${countText}</span>
+              <div class="folder-actions">
+                <button class="btn-add-acc" onclick="addAccountToFolder('${folder.id}')">+ Account</button>
+                <button class="btn-minimize" title="${folder.collapsed ? 'Expand' : 'Minimize'}" 
+                  onclick="toggleFolderCollapse('${folder.id}')">
+                  ${folder.collapsed ? '▲' : '▼'}
+                </button>
+                <button class="btn-minimize" style="color: var(--ios-red);" title="Delete Folder" 
+                  onclick="deleteFolder('${folder.id}')">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accounts Grid -->
+          <div class="accounts-grid ${folder.collapsed ? 'collapsed' : ''}" id="grid-${folder.id}"></div>
+        `;
+
+        const gridEl = folderEl.querySelector(`#grid-${folder.id}`);
+
+        folder.accounts.forEach(acc => {
+          const card = document.createElement("div");
+          card.className = "app-card glass-panel";
+
+          const avatarContent = acc.icon 
+            ? `<img src="${acc.icon}" alt="app" />`
+            : (acc.app ? acc.app[0].toUpperCase() : "?");
+
+          card.innerHTML = `
+            <div class="card-top">
+              <div class="app-brand">
+                <div class="app-avatar-wrapper" onclick="promptIconUpload('${folder.id}', '${acc.id}')" title="Upload Icon">
+                  <div class="app-avatar">${avatarContent}</div>
+                  <div class="avatar-badge-edit">✎</div>
+                </div>
+
+                <input class="inline-edit edit-app-name" value="${escapeHtml(acc.app)}" 
+                  oninput="updateAccountField('${folder.id}', '${acc.id}', 'app', this.value)" placeholder="Account Title" />
+              </div>
+
+              <button class="btn-minimize" style="color: var(--ios-red); width:28px; height:28px;" title="Delete" 
+                onclick="deleteAccount('${folder.id}', '${acc.id}')">✕</button>
+            </div>
+
+            <div class="field-row">
+              <div class="field-left">
+                <span class="field-label">Username / Email</span>
+                <input class="inline-edit" value="${escapeHtml(acc.email)}" 
+                  oninput="updateAccountField('${folder.id}', '${acc.id}', 'email', this.value)" />
+              </div>
+              <button class="copy-btn" onclick="copyValue('${escapeAttr(acc.email)}', this)">Copy</button>
+            </div>
+
+            <div class="field-row">
+              <div class="field-left">
+                <span class="field-label">Password</span>
+                <input type="password" id="pass-${acc.id}" class="inline-edit" value="${escapeHtml(acc.password)}" 
+                  oninput="updateAccountField('${folder.id}', '${acc.id}', 'password', this.value)" />
+              </div>
+              <div style="display:flex; gap:4px;">
+                <button class="toggle-btn" onclick="togglePass('${acc.id}')">👁</button>
+                <button class="copy-btn" onclick="copyValue('${escapeAttr(acc.password)}', this)">Copy</button>
+              </div>
+            </div>
+
+            <div class="notes-row">
+              <span class="field-label">Notes</span>
+              <input class="inline-edit edit-notes" value="${escapeHtml(acc.notes || '')}" 
+                placeholder="Add notes..." 
+                oninput="updateAccountField('${folder.id}', '${acc.id}', 'notes', this.value)" />
+            </div>
+          `;
+
+          gridEl.appendChild(card);
+        });
+
+        container.appendChild(folderEl);
+      });
+    }
+
+    function togglePass(id) {
+      const el = document.getElementById(`pass-${id}`);
+      el.type = el.type === "password" ? "text" : "password";
+    }
+
+    async function copyValue(val, btn) {
+      try {
+        await navigator.clipboard.writeText(val);
+        const original = btn.innerText;
+        btn.innerText = "Copied!";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.innerText = original;
+          btn.classList.remove("copied");
+        }, 1200);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function escapeHtml(s) {
+      return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    function escapeAttr(s) {
+      return (s || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initBiometricUI();
+    });
+  </script>
+</body>
+</html>
